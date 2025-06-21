@@ -1,0 +1,12 @@
+# Jupytext configuration for arx-nid
+# This pairs .ipynb notebooks with .py:percent text files
+
+# Remove notebook metadata that causes unnecessary diffs
+notebook_metadata_filter = "-all"
+
+# Remove cell metadata except for tags
+cell_metadata_filter = "-all,tags"
+
+# Default text representation for paired notebooks
+text_representation.extension = ".py"
+text_representation.format_name = "percent"

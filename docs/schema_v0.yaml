@@ -1,0 +1,141 @@
+## Schema Documentation v0
+
+### Flow Records Schema
+
+This schema describes the structure of network flow records extracted from Zeek connection logs.
+
+#### Core Identifiers
+```yaml
+uid: string
+  description: Zeek connection unique identifier
+  example: "C8DRTq4Aajw0g4o7db"
+
+ts: timestamp  
+  description: Timestamp when connection started (Unix epoch)
+  units: seconds
+  example: 1704067200.123456
+```
+
+#### Connection Tuple
+```yaml
+id.orig_h: ipv4/ipv6
+  description: Source/originator IP address
+  example: "192.168.1.100"
+
+id.orig_p: uint16
+  description: Source port number
+  range: 1-65535
+  example: 54123
+
+id.resp_h: ipv4/ipv6
+  description: Destination/responder IP address  
+  example: "10.0.0.50"
+
+id.resp_p: uint16
+  description: Destination port number
+  range: 1-65535
+  example: 443
+```
+
+#### Protocol Information
+```yaml
+proto: enum
+  description: Transport protocol
+  values: ["tcp", "udp", "icmp"]
+  example: "tcp"
+
+service: string
+  description: Application protocol/service detected by Zeek
+  examples: ["http", "https", "ssh", "dns", "smtp"]
+  nullable: true
+```
+
+#### Traffic Metrics
+```yaml
+orig_bytes: uint64
+  description: Bytes sent by originator (source)
+  units: bytes
+  example: 1024
+
+resp_bytes: uint64
+  description: Bytes sent by responder (destination)  
+  units: bytes
+  example: 2048
+
+orig_pkts: uint32
+  description: Packets sent by originator
+  units: count
+  example: 10
+
+resp_pkts: uint32
+  description: Packets sent by responder
+  units: count
+  example: 8
+
+duration: float64
+  description: Connection duration
+  units: seconds
+  example: 15.234567
+```
+
+#### Connection State
+```yaml
+conn_state: string
+  description: Connection state as determined by Zeek
+  examples: ["SF", "S0", "REJ", "RSTO", "SH"]
+  reference: "https://docs.zeek.org/en/master/scripts/base/protocols/conn/main.zeek.html#type-Conn::State"
+
+history: string
+  description: Connection history flags  
+  examples: ["Dd", "ShADadFf", "^d"]
+  reference: "Connection state transitions and flags"
+```
+
+#### Timing Details  
+```yaml
+orig_ip_bytes: uint64
+  description: IP-level bytes from originator (includes headers)
+  units: bytes
+
+resp_ip_bytes: uint64  
+  description: IP-level bytes from responder (includes headers)
+  units: bytes
+
+tunnel_parents: array[string]
+  description: Parent tunnel connections if applicable
+  example: ["C1a2b3c4d5e6f7g8h9"]
+  nullable: true
+```
+
+#### Derived Features (Generated during processing)
+```yaml
+orig_bw_mean: float64
+  description: Rolling mean bandwidth from originator
+  units: bytes_per_second
+  window: 5_seconds
+  
+resp_bw_mean: float64
+  description: Rolling mean bandwidth from responder  
+  units: bytes_per_second
+  window: 5_seconds
+
+flow_ratio: float64
+  description: Ratio of orig_bytes to resp_bytes
+  formula: "orig_bytes / (resp_bytes + 1)"
+  
+pkt_size_avg: float64
+  description: Average packet size for the flow
+  formula: "(orig_bytes + resp_bytes) / (orig_pkts + resp_pkts)"
+```
+
+### Data Quality Notes
+
+- **Missing Values**: Some fields may be null/empty when Zeek cannot determine the value
+- **Precision**: Timestamps have microsecond precision  
+- **IP Privacy**: Consider anonymizing IP addresses for production models
+- **Service Detection**: Service field depends on Zeek's protocol analysis accuracy
+
+### Version History
+
+- **v0**: Initial schema based on Zeek connection logs
+- Future versions will add derived features and additional log types (DNS, HTTP, etc.)

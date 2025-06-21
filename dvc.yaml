@@ -1,0 +1,20 @@
+stages:
+  build-features:
+    cmd: python scripts/zeek2parquet.py --output data/processed/flows_v0.parquet
+    deps:
+    - scripts/zeek2parquet.py
+    - data/raw
+    outs:
+    - data/processed/flows_v0.parquet
+    desc: "Convert PCAP files to processed flow data via Zeek"
+    
+  create-tensors:
+    cmd: python scripts/create_tensors.py --input data/processed/flows_v0.parquet --output data/processed/tensor_v0.npy
+    deps:
+    - scripts/create_tensors.py
+    - data/processed/flows_v0.parquet
+    - arx_nid/features/transformers.py
+    outs:
+    - data/processed/tensor_v0.npy
+    - data/processed/tensor_metadata_v0.parquet
+    desc: "Generate time-series tensors for deep learning models"

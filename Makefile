@@ -38,6 +38,16 @@ validate-data:  ## Validate data integrity and checksums
 	@echo "Validating data manifest..."
 	@python3 -c "import csv; print('Datasets:'); [print(f'  {r[\"dataset\"]}') for r in csv.DictReader(open('data/datasets.csv'))]"
 
+features:  ## Rebuild processed Parquet + tensors
+	python3 -c "import sys; sys.path.append('.'); from arx_nid.features.transformers import *; print('✓ Feature modules importable')" || pip install -r requirements.txt
+	dvc repro build-features
+
+tensors:  ## Generate time-series tensors from flow data  
+	dvc repro create-tensors
+
+process-all:  ## Run complete data processing pipeline
+	dvc repro
+
 init-dvc:  ## Initialize DVC (if not already done)
 	dvc init --no-scm
 	dvc remote add -d storage s3://arx-nid-dvc-storage
@@ -45,7 +55,20 @@ init-dvc:  ## Initialize DVC (if not already done)
 # Development targets
 dev-setup:  ## Set up development environment
 	pip install -r requirements.txt
-	pip install jupyter black flake8 pytest
+	pre-commit install
+
+test:  ## Run unit tests
+	python -m pytest tests/ -v
+
+test-features:  ## Test feature transformers specifically
+	python -m pytest tests/test_transformers.py -v
+
+lint:  ## Run code formatting and linting
+	black arx_nid/ scripts/ tests/
+	ruff check arx_nid/ scripts/ tests/ --fix
+
+notebook:  ## Start Jupyter Lab for data exploration
+	jupyter lab notebooks/
 
 test-downloads:  ## Test download scripts without downloading
 	@echo "Testing download scripts..."

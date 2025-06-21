@@ -20,10 +20,15 @@ jobs:
       with:
         python-version: '3.9'
         
-    - name: Install dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wireshark-common tshark
+        
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install dvc[s3] requests tqdm
+        pip install -r requirements.txt
         
     - name: Configure DVC
       run: |
@@ -31,12 +36,62 @@ jobs:
         
     - name: Pull data from DVC remote
       run: |
-        # Only pull if DVC files exist
+        # Only pull if DVC files exist and we have credentials
         if [ -f .dvc/config ]; then
           echo "Pulling data from DVC remote..."
-          dvc pull || echo "No data to pull or remote not accessible"
+          dvc pull --quiet || echo "No data to pull or remote not accessible"
         else
           echo "No DVC configuration found"
+        fi
+      
+    - name: Lint code
+      run: |
+        black --check arx_nid/ scripts/ tests/
+        ruff check arx_nid/ scripts/ tests/
+        
+    - name: Run unit tests
+      run: |
+        python -m pytest tests/ -v --tb=short
+        
+    - name: Test feature processing (if data available)
+      run: |
+        # Test feature transformers with mock data
+        python -c "
+        import sys
+        sys.path.append('.')
+        from tests.test_transformers import sample_flow_data
+        from arx_nid.features.transformers import FlowPreprocessor
+        import pandas as pd
+        
+        # Create sample data
+        data = {
+            'ts': [1704067200 + i for i in range(5)],
+            'id.orig_h': ['192.168.1.10'] * 5,
+            'id.resp_h': ['10.0.0.50'] * 5,
+            'proto': ['tcp'] * 5,
+            'service': ['http'] * 5,
+            'orig_bytes': [100, 200, 300, 400, 500],
+            'resp_bytes': [50, 100, 150, 200, 250],
+            'orig_pkts': [10, 20, 30, 40, 50],
+            'resp_pkts': [5, 10, 15, 20, 25],
+            'duration': [1.0, 2.0, 3.0, 4.0, 5.0],
+            'conn_state': ['SF'] * 5
+        }
+        df = pd.DataFrame(data)
+        
+        preprocessor = FlowPreprocessor()
+        result = preprocessor.fit_transform(df)
+        print(f'✓ Feature processing successful: {result.shape}')
+        "
+        
+    - name: Rebuild features (if data available)
+      run: |
+        # Try to rebuild features if we have raw data
+        if [ -d "data/raw" ] && [ "$(ls -A data/raw)" ]; then
+          echo "Raw data found, attempting feature rebuild..."
+          dvc repro build-features --quiet || echo "Feature rebuild failed or no raw data"
+        else
+          echo "No raw data available for feature rebuild"
         fi
         
     - name: Validate data manifest
@@ -48,6 +103,9 @@ jobs:
             reader = csv.DictReader(f)
             datasets = list(reader)
             print(f'Found {len(datasets)} datasets in manifest')
+            for dataset in datasets:
+                print(f'  {dataset[\"dataset\"]}: {dataset[\"description\"]}')
+        "
             for ds in datasets:
                 print(f'  - {ds[\"dataset\"]}: {ds[\"url\"]}')
         "
