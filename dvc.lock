@@ -6,13 +6,13 @@ stages:
     deps:
     - path: scripts/create_test_data.py
       hash: md5
-      md5: f7b95f6875374aeba26e98379974a3f8
-      size: 6816
+      md5: b3ecdbc76382de3ed1a1607a64486c98
+      size: 6783
     outs:
     - path: data/processed/flows_v0.parquet
       hash: md5
-      md5: dab187409d6a9da7b5c84128c1ef6146
-      size: 53094
+      md5: 24ec1bd2896081413bc1ef07aedea9e6
+      size: 53292
   create-tensors:
     cmd: python scripts/create_tensors.py --input 
       data/processed/flows_v0.parquet --output data/processed/tensor_v0.npy 
@@ -24,8 +24,8 @@ stages:
       size: 10324
     - path: data/processed/flows_v0.parquet
       hash: md5
-      md5: dab187409d6a9da7b5c84128c1ef6146
-      size: 53094
+      md5: 24ec1bd2896081413bc1ef07aedea9e6
+      size: 53292
     - path: scripts/create_tensors.py
       hash: md5
       md5: df7bf3a06c240b9ebabe30d9a70eca8b
@@ -33,9 +33,9 @@ stages:
     outs:
     - path: data/processed/tensor_metadata_v0.parquet
       hash: md5
-      md5: 04a8f9287f3c1ded1e47a8c364cf1a7e
-      size: 7302
+      md5: bce15b03d68e4fb10142b03bb29287d6
+      size: 7214
     - path: data/processed/tensor_v0.npy
       hash: md5
-      md5: b32d35f8dd0833ac7d198fe3986510eb
-      size: 291168
+      md5: 2ec2facc36db30e0f6ddd93bcb792f53
+      size: 281648

@@ -19,7 +19,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 
-def convert_pcap_to_zeek(pcap_path: Union[str, Path], output_dir: Union[str, Path]) -> None:
+def convert_pcap_to_zeek(
+    pcap_path: Union[str, Path], output_dir: Union[str, Path]
+) -> None:
     """Convert PCAP file to Zeek logs."""
     pcap_path = Path(pcap_path)
     output_dir = Path(output_dir)
@@ -48,7 +50,9 @@ def convert_pcap_to_zeek(pcap_path: Union[str, Path], output_dir: Union[str, Pat
         sys.exit(1)
 
 
-def parse_zeek_logs(log_dir: Union[str, Path], log_type: str = "conn") -> List[Dict[str, Any]]:
+def parse_zeek_logs(
+    log_dir: Union[str, Path], log_type: str = "conn"
+) -> List[Dict[str, Any]]:
     """Parse Zeek logs from JSON format."""
     log_dir = Path(log_dir)
     log_pattern = f"{log_type}*.json"
@@ -74,7 +78,9 @@ def parse_zeek_logs(log_dir: Union[str, Path], log_type: str = "conn") -> List[D
     return rows
 
 
-def convert_to_parquet(data: List[Dict[str, Any]], output_path: Union[str, Path]) -> None:
+def convert_to_parquet(
+    data: List[Dict[str, Any]], output_path: Union[str, Path]
+) -> None:
     """Convert parsed data to Parquet format."""
     if not data:
         print("No data to convert")
