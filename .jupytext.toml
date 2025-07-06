@@ -4,9 +4,8 @@
 # Remove notebook metadata that causes unnecessary diffs
 notebook_metadata_filter = "-all"
 
-# Remove cell metadata except for tags
+# Remove cell metadata except for tags  
 cell_metadata_filter = "-all,tags"
 
-# Default text representation for paired notebooks
-text_representation.extension = ".py"
-text_representation.format_name = "percent"
+# Default format for new text files
+default_jupytext_formats = "ipynb,py:percent"

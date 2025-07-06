@@ -32,16 +32,15 @@ def convert_pcap_to_zeek(pcap_path: str, output_dir: str) -> None:
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Run Zeek to process the PCAP
+    # Run Zeek to process the PCAP (in the output directory)
     cmd = [
-        "zeek", "-r", str(pcap_path),
-        f"Log::default_writer=JSON",
-        f"Log::default_path={output_dir}"
+        "zeek", "-r", str(pcap_path.resolve()),
+        f"LogAscii::use_json=T"
     ]
     
     print(f"Converting {pcap_path.name} to Zeek logs...")
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, cwd=str(output_dir))
         print(f"✓ Zeek logs saved to {output_dir}")
     except subprocess.CalledProcessError as e:
         print(f"Error running Zeek: {e}")
