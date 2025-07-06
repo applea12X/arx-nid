@@ -103,9 +103,6 @@ jobs:
             reader = csv.DictReader(f)
             datasets = list(reader)
             print(f'Found {len(datasets)} datasets in manifest')
-            for dataset in datasets:
-                print(f'  {dataset[\"dataset\"]}: {dataset[\"description\"]}')
-        "
             for ds in datasets:
                 print(f'  - {ds[\"dataset\"]}: {ds[\"url\"]}')
         "
