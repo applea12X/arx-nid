@@ -4,9 +4,14 @@ Download CTAP 2018-24 and verify checksum.
 Usage: python download_ctap.py --out data/raw
 """
 from pathlib import Path
-import argparse, hashlib, requests, tqdm, csv
+import argparse
+import hashlib
+import requests
+import tqdm
+import csv
 
-MANIFEST = "data/datasets.csv"      # url, sha256 stored here
+MANIFEST = "data/datasets.csv"  # url, sha256 stored here
+
 
 def get_meta(name):
     """Get URL and expected SHA256 from manifest CSV"""
@@ -16,13 +21,15 @@ def get_meta(name):
                 return row["url"], row["sha256"]
     raise KeyError(f"{name} not in manifest")
 
-def sha256(fp, buf=1<<20):
+
+def sha256(fp, buf=1 << 20):
     """Calculate SHA256 hash of file"""
     h = hashlib.sha256()
     while chunk := fp.read(buf):
         h.update(chunk)
     fp.seek(0)
     return h.hexdigest()
+
 
 def main(ds_name, out_dir):
     """Download and verify dataset"""
@@ -31,7 +38,7 @@ def main(ds_name, out_dir):
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Downloading {ds_name} from {url}")
-    
+
     # Skip download if hash is placeholder
     if expected == "placeholder_hash_to_be_updated_after_download":
         print(f"⚠️  Placeholder hash detected for {ds_name}")
@@ -51,14 +58,15 @@ def main(ds_name, out_dir):
     # Verify checksum
     with open(out_path, "rb") as f:
         actual_hash = sha256(f)
-    
+
     if actual_hash != expected:
-        print(f"❌ Checksum mismatch!")
+        print("❌ Checksum mismatch!")
         print(f"Expected: {expected}")
         print(f"Actual:   {actual_hash}")
         raise ValueError("Checksum verification failed")
-    
+
     print("✓ Download and verification OK ➜", out_path)
+
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Download CTAP 2018-24 dataset")
