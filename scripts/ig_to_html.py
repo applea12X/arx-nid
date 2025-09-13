@@ -22,7 +22,7 @@ import io
 def create_heatmap_html(attributions, metadata, sample_idx=0, output_path=None):
     """
     Create an HTML heatmap visualization of IG attributions.
-    
+
     Args:
         attributions: IG attribution array of shape (samples, time, features)
         metadata: Metadata dictionary
@@ -30,47 +30,53 @@ def create_heatmap_html(attributions, metadata, sample_idx=0, output_path=None):
         output_path: Where to save the HTML file
     """
     if sample_idx >= attributions.shape[0]:
-        raise ValueError(f"Sample {sample_idx} not available (only {attributions.shape[0]} samples)")
-    
+        raise ValueError(
+            f"Sample {sample_idx} not available (only {attributions.shape[0]} samples)"
+        )
+
     # Get the attribution data for this sample
     sample_attr = attributions[sample_idx]  # Shape: (time, features)
-    
+
     # Create the heatmap
     plt.figure(figsize=(12, 6))
-    
+
     # Use a diverging colormap centered at 0
     ax = sns.heatmap(
         sample_attr,
-        cmap='coolwarm',
+        cmap="coolwarm",
         center=0,
-        cbar_kws={'label': 'Attribution Score'},
+        cbar_kws={"label": "Attribution Score"},
         xticklabels=False,  # Too many features to show labels
-        yticklabels=True
+        yticklabels=True,
     )
-    
-    ax.set_xlabel('Features')
-    ax.set_ylabel('Time (packet index)')
-    ax.set_title(f'Integrated Gradients Attribution - Sample {sample_idx}')
-    
+
+    ax.set_xlabel("Features")
+    ax.set_ylabel("Time (packet index)")
+    ax.set_title(f"Integrated Gradients Attribution - Sample {sample_idx}")
+
     # Add grid for better readability
     ax.grid(False)
-    
+
     # Save to a bytes buffer to embed in HTML
     img_buffer = io.BytesIO()
-    plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=150)
+    plt.savefig(img_buffer, format="png", bbox_inches="tight", dpi=150)
     img_buffer.seek(0)
     img_data = base64.b64encode(img_buffer.read()).decode()
     plt.close()
-    
+
     # Create temporal summary (sum over features)
     temporal_importance = np.sum(np.abs(sample_attr), axis=1)
-    
+
     # Create feature summary (sum over time)
     feature_importance = np.sum(np.abs(sample_attr), axis=0)
-    
+
     # Get prediction if available
-    prediction = metadata.get('predictions', [None])[sample_idx] if sample_idx < len(metadata.get('predictions', [])) else None
-    
+    prediction = (
+        metadata.get("predictions", [None])[sample_idx]
+        if sample_idx < len(metadata.get("predictions", []))
+        else None
+    )
+
     # Create HTML content
     html_content = f"""
     <!DOCTYPE html>
@@ -164,16 +170,18 @@ def create_heatmap_html(attributions, metadata, sample_idx=0, output_path=None):
                 <table class="stats-table">
                     <tr><th>Time Step</th><th>Total Attribution</th><th>Relative Importance</th></tr>
     """
-    
+
     # Add temporal importance table
-    sorted_temporal = sorted(enumerate(temporal_importance), key=lambda x: abs(x[1]), reverse=True)
+    sorted_temporal = sorted(
+        enumerate(temporal_importance), key=lambda x: abs(x[1]), reverse=True
+    )
     for i, (time_step, importance) in enumerate(sorted_temporal[:10]):  # Top 10
         relative = importance / np.max(np.abs(temporal_importance)) * 100
-        style = 'class="highlight"' if i < 3 else ''
+        style = 'class="highlight"' if i < 3 else ""
         html_content += f"""
                     <tr {style}><td>{time_step}</td><td>{importance:.6f}</td><td>{relative:.1f}%</td></tr>
         """
-    
+
     html_content += f"""
                 </table>
                 <p><em>Most important time step: <span class="highlight">Time Step {np.argmax(np.abs(temporal_importance))}</span></em></p>
@@ -185,16 +193,18 @@ def create_heatmap_html(attributions, metadata, sample_idx=0, output_path=None):
                 <table class="stats-table">
                     <tr><th>Feature Index</th><th>Total Attribution</th><th>Relative Importance</th></tr>
     """
-    
+
     # Add feature importance table
-    sorted_features = sorted(enumerate(feature_importance), key=lambda x: abs(x[1]), reverse=True)
+    sorted_features = sorted(
+        enumerate(feature_importance), key=lambda x: abs(x[1]), reverse=True
+    )
     for i, (feat_idx, importance) in enumerate(sorted_features[:15]):  # Top 15
         relative = importance / np.max(np.abs(feature_importance)) * 100
-        style = 'class="highlight"' if i < 5 else ''
+        style = 'class="highlight"' if i < 5 else ""
         html_content += f"""
                     <tr {style}><td>{feat_idx}</td><td>{importance:.6f}</td><td>{relative:.1f}%</td></tr>
         """
-    
+
     html_content += f"""
                 </table>
                 <p><em>Most important feature: <span class="highlight">Feature {np.argmax(np.abs(feature_importance))}</span></em></p>
@@ -235,65 +245,64 @@ def create_heatmap_html(attributions, metadata, sample_idx=0, output_path=None):
     </body>
     </html>
     """
-    
+
     if output_path:
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(html_content)
         print(f"HTML visualization saved to {output_path}")
-    
+
     return html_content
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create HTML heatmap from IG attributions")
-    parser.add_argument(
-        '--sample',
-        type=int,
-        default=0,
-        help='Which sample to visualize (default: 0)'
+    parser = argparse.ArgumentParser(
+        description="Create HTML heatmap from IG attributions"
     )
     parser.add_argument(
-        '--input-dir',
-        default='reports',
-        help='Directory containing IG attribution files'
+        "--sample", type=int, default=0, help="Which sample to visualize (default: 0)"
     )
     parser.add_argument(
-        '--output',
-        help='Output HTML file path (default: reports/ig_heatmap_{sample}.html)'
+        "--input-dir",
+        default="reports",
+        help="Directory containing IG attribution files",
     )
-    
+    parser.add_argument(
+        "--output",
+        help="Output HTML file path (default: reports/ig_heatmap_{sample}.html)",
+    )
+
     args = parser.parse_args()
-    
+
     input_dir = Path(args.input_dir)
-    
+
     # Load attribution data
-    attr_path = input_dir / 'ig_attr.npy'
+    attr_path = input_dir / "ig_attr.npy"
     if not attr_path.exists():
         print(f"Error: Attribution file not found: {attr_path}")
         print("Run 'python scripts/make_ig.py' first")
         return
-    
+
     # Load metadata
-    metadata_path = input_dir / 'ig_attr_metadata.json'
+    metadata_path = input_dir / "ig_attr_metadata.json"
     metadata = {}
     if metadata_path.exists():
-        with open(metadata_path, 'r') as f:
+        with open(metadata_path, "r") as f:
             metadata = json.load(f)
-    
+
     print(f"Loading attributions from {attr_path}")
     attributions = np.load(attr_path)
     print(f"Attribution shape: {attributions.shape}")
-    
+
     # Determine output path
     if args.output:
         output_path = Path(args.output)
     else:
-        output_path = input_dir / f'ig_heatmap_{args.sample}.html'
-    
+        output_path = input_dir / f"ig_heatmap_{args.sample}.html"
+
     # Create visualization
     print(f"Creating heatmap for sample {args.sample}")
     create_heatmap_html(attributions, metadata, args.sample, output_path)
-    
+
     print(f"\n✓ HTML heatmap created successfully!")
     print(f"  Sample: {args.sample}")
     print(f"  Output: {output_path}")

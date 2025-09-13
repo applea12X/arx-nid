@@ -13,15 +13,15 @@ from pathlib import Path
 class ONNXModel:
     """
     Wrapper for ONNX models that provides a uniform predict interface.
-    
+
     This class is designed to work with both SHAP (requires 2D input)
     and standard inference (supports 3D input).
     """
-    
-    def __init__(self, path='models/model_v1_robust.onnx'):
+
+    def __init__(self, path="models/model_v1_robust.onnx"):
         """
         Initialize ONNX model.
-        
+
         Args:
             path: Path to ONNX model file
         """
@@ -29,22 +29,21 @@ class ONNXModel:
         if not self.path.exists():
             print(f"Warning: Model file {path} not found. Creating placeholder model.")
             self._create_placeholder_model()
-        
+
         self.sess = ort.InferenceSession(
-            str(self.path), 
-            providers=['CPUExecutionProvider']
+            str(self.path), providers=["CPUExecutionProvider"]
         )
-        
+
         # Get input/output info
         self.input_name = self.sess.get_inputs()[0].name
         self.output_name = self.sess.get_outputs()[0].name
         self.input_shape = self.sess.get_inputs()[0].shape
-        
+
     def _create_placeholder_model(self):
         """Create a placeholder ONNX model for testing."""
         import torch
         import torch.nn as nn
-        
+
         # Create placeholder PyTorch model
         class PlaceholderModel(nn.Module):
             def __init__(self, input_size=34, hidden_size=64):
@@ -55,7 +54,7 @@ class ONNXModel:
                 self.fc3 = nn.Linear(32, 1)
                 self.relu = nn.ReLU()
                 self.sigmoid = nn.Sigmoid()
-                
+
             def forward(self, x):
                 # x shape: (batch, time, features) -> (batch, time*features)
                 x = self.flatten(x)
@@ -63,14 +62,14 @@ class ONNXModel:
                 x = self.relu(self.fc2(x))
                 x = self.sigmoid(self.fc3(x))
                 return x
-        
+
         # Create and export model
         model = PlaceholderModel()
         dummy_input = torch.randn(1, 5, 34)
-        
+
         # Ensure models directory exists
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Export to ONNX
         torch.onnx.export(
             model,
@@ -79,22 +78,19 @@ class ONNXModel:
             export_params=True,
             opset_version=11,
             do_constant_folding=True,
-            input_names=['input'],
-            output_names=['output'],
-            dynamic_axes={
-                'input': {0: 'batch_size'},
-                'output': {0: 'batch_size'}
-            }
+            input_names=["input"],
+            output_names=["output"],
+            dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
         )
         print(f"Created placeholder ONNX model at {self.path}")
-        
+
     def predict(self, x: np.ndarray) -> np.ndarray:
         """
         Predict using the ONNX model.
-        
+
         Args:
             x: Input tensor of shape (batch, time, features) or (batch, time*features)
-            
+
         Returns:
             Predictions of shape (batch,)
         """
@@ -108,22 +104,21 @@ class ONNXModel:
             pass
         else:
             raise ValueError(f"Unexpected input shape: {x.shape}")
-            
+
         # Run inference
         result = self.sess.run(
-            [self.output_name], 
-            {self.input_name: x.astype(np.float32)}
+            [self.output_name], {self.input_name: x.astype(np.float32)}
         )[0]
-        
+
         return result.ravel()  # Return 1D array
-        
+
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
         """
         Predict class probabilities (for compatibility).
-        
+
         Args:
             x: Input tensor
-            
+
         Returns:
             Array of shape (batch, 2) with [prob_benign, prob_attack]
         """
@@ -137,56 +132,56 @@ class ONNXModel:
 def create_pytorch_model_wrapper():
     """
     Create a PyTorch model wrapper for Integrated Gradients.
-    
+
     This creates a placeholder BiLSTM model if no real model exists.
     """
     import torch
     import torch.nn as nn
-    
+
     class BiLSTM(nn.Module):
         """
         Bidirectional LSTM model for sequence classification.
         """
-        
+
         def __init__(self, input_size=34, hidden_size=128, num_layers=2):
             super().__init__()
             self.hidden_size = hidden_size
             self.num_layers = num_layers
-            
+
             self.lstm = nn.LSTM(
                 input_size=input_size,
                 hidden_size=hidden_size,
                 num_layers=num_layers,
                 bidirectional=True,
                 batch_first=True,
-                dropout=0.1 if num_layers > 1 else 0
+                dropout=0.1 if num_layers > 1 else 0,
             )
-            
+
             # Output layer (bidirectional doubles the hidden size)
             self.fc = nn.Linear(hidden_size * 2, 1)
             self.sigmoid = nn.Sigmoid()
-            
+
         def forward(self, x):
             # x shape: (batch, seq_len, features)
             lstm_out, _ = self.lstm(x)
-            
+
             # Use last time step output
             output = lstm_out[:, -1, :]  # (batch, hidden_size * 2)
-            
+
             # Final classification
             output = self.fc(output)
             output = self.sigmoid(output)
-            
+
             return output.squeeze(-1)  # Remove last dimension
-    
+
     # Create model
     model = BiLSTM(input_size=34, hidden_size=128, num_layers=2)
-    
+
     # Try to load existing weights, otherwise use random initialization
-    model_path = Path('models/model_v1_robust.pt')
+    model_path = Path("models/model_v1_robust.pt")
     if model_path.exists():
         try:
-            model.load_state_dict(torch.load(model_path, map_location='cpu'))
+            model.load_state_dict(torch.load(model_path, map_location="cpu"))
             print(f"Loaded existing PyTorch model from {model_path}")
         except Exception as e:
             print(f"Could not load model weights: {e}")
@@ -197,6 +192,6 @@ def create_pytorch_model_wrapper():
         model_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(model.state_dict(), model_path)
         print(f"Saved placeholder PyTorch model to {model_path}")
-    
+
     model.eval()
     return model
