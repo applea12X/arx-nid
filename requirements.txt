@@ -38,5 +38,11 @@ ruff>=0.1.0
 
 # Optional: Advanced ML libraries (uncomment as needed)
 # tensorflow>=2.8.0
-# torch>=1.11.0
+torch>=1.11.0
 # xgboost>=1.5.0
+
+# Explainability libraries
+shap==0.45.*
+captum==0.7.*
+jinja2>=3.0.0
+onnxruntime>=1.15.0

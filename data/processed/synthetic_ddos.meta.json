@@ -1,0 +1,27 @@
+{
+  "attack_type": "ddos",
+  "description": "DDoS attack with massive byte counts and high packet rates",
+  "shape": [
+    20,
+    34
+  ],
+  "num_packets": 20,
+  "num_features": 34,
+  "statistics": {
+    "mean": 348307.24626165815,
+    "std": 2249319.436202748,
+    "min": -16923.31352544663,
+    "max": 29211419.895630155,
+    "total_bytes_orig": 1208093.2196526013,
+    "total_bytes_resp": 1757.6797701363982,
+    "avg_duration": 0.0053903408687728
+  },
+  "key_characteristics": [
+    "Extremely high byte counts (50,000+ bytes per packet)",
+    "High packet rates with minimal responses",
+    "One-way traffic pattern (high orig/resp ratio)",
+    "Short connection durations",
+    "TCP protocol with connection resets"
+  ],
+  "generation_timestamp": "2025-09-13T13:34:54.817839"
+}

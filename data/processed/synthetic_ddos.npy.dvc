@@ -1,0 +1,5 @@
+outs:
+- md5: 1327f123818cef5fb42768c32856096d
+  size: 5568
+  hash: md5
+  path: synthetic_ddos.npy

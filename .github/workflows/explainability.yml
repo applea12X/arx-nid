@@ -1,0 +1,107 @@
+name: Explainability Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'arx_nid/explain/**'
+      - 'scripts/make_*.py'
+      - 'requirements.txt'
+
+jobs:
+  explainability-smoke-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'  # Use 3.11 to avoid NumPy compatibility issues
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Install compatible NumPy version first
+        pip install "numpy==1.26.4"
+        pip install -r requirements.txt
+        pip install -e .
+        
+    - name: Create test data directory
+      run: |
+        mkdir -p data/processed
+        mkdir -p models
+        mkdir -p reports
+        
+    - name: SHAP smoke test
+      run: |
+        # Generate minimal test data
+        python -c "
+        import numpy as np
+        test_data = np.random.randn(10, 5, 34)
+        np.save('data/processed/test_tensor.npy', test_data)
+        "
+        
+        # Run SHAP with minimal samples
+        python scripts/make_shap.py --limit 3 --nsamples 10 --data-path data/processed/test_tensor.npy
+        
+        # Check outputs exist
+        test -f reports/shap_3.json
+        test -f reports/shap_3.html
+        echo "✓ SHAP smoke test passed"
+        
+    - name: Integrated Gradients smoke test
+      run: |
+        # Run IG with minimal configuration
+        python scripts/make_ig.py --samples 2 --steps 10 --data-path data/processed/test_tensor.npy
+        
+        # Check outputs exist
+        test -f reports/ig_attr.npy
+        test -f reports/ig_attr_metadata.json
+        echo "✓ IG smoke test passed"
+        
+    - name: HTML visualization test
+      run: |
+        # Generate HTML heatmap
+        python scripts/ig_to_html.py --sample 0 --input-dir reports
+        
+        # Check HTML exists and contains expected content
+        test -f reports/ig_heatmap_0.html
+        grep -q "Integrated Gradients" reports/ig_heatmap_0.html
+        echo "✓ HTML visualization test passed"
+        
+    - name: Synthetic attack generation test
+      run: |
+        # Generate synthetic attacks
+        python scripts/make_synthetic.py --attack-type ddos --output-dir data/processed
+        
+        # Check synthetic data exists
+        test -f data/processed/synthetic_ddos.npy
+        test -f data/processed/synthetic_ddos.meta.json
+        echo "✓ Synthetic attack generation test passed"
+        
+    - name: Full pipeline integration test
+      run: |
+        # Test full pipeline with synthetic data
+        python scripts/make_shap.py --limit 1 --nsamples 5 --data-path data/processed/synthetic_ddos.npy
+        
+        # Verify synthetic flow explanation works
+        test -f reports/shap_1.json
+        test -f reports/shap_1.html
+        echo "✓ Full pipeline integration test passed"
+        
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: explainability-test-outputs
+        path: |
+          reports/
+          data/processed/test_*.npy
+          models/model_v1_*.pt
+          models/model_v1_*.onnx
+        retention-days: 7

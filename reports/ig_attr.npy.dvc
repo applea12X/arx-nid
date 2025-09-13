@@ -1,0 +1,5 @@
+outs:
+- md5: e7911e0fbaa5c3acc1892a2619b339e2
+  size: 4208
+  hash: md5
+  path: ig_attr.npy

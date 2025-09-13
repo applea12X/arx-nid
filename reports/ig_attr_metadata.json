@@ -1,0 +1,21 @@
+{
+  "shape": [
+    3,
+    5,
+    34
+  ],
+  "samples_analyzed": 3,
+  "integration_steps": 30,
+  "predictions": [
+    0.48233655095100403,
+    0.48443594574928284,
+    0.48269423842430115
+  ],
+  "data_source": "data/processed/tensor_v0.npy",
+  "attribution_range": {
+    "min": -0.001496381541931781,
+    "max": 0.0014900192251599657,
+    "mean": -5.714576292833574e-06,
+    "std": 0.0002124997024567536
+  }
+}
