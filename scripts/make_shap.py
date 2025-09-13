@@ -37,6 +37,16 @@ def main():
     parser.add_argument(
         "--output-dir", default="reports", help="Output directory for SHAP results"
     )
+    parser.add_argument(
+        "--data-path",
+        default=None,
+        help="Path to tensor data file (overrides --sample default paths)",
+    )
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="Run in smoke test mode (simplified for CI)",
+    )
 
     args = parser.parse_args()
 
@@ -49,7 +59,22 @@ def main():
     model = ONNXModel()
 
     # Load data
-    if args.sample == "synthetic":
+    if args.data_path:
+        # Use custom data path
+        print(f"Loading data from custom path: {args.data_path}")
+        data_path = Path(args.data_path)
+        if not data_path.exists():
+            print(f"Error: Data file not found at {data_path}")
+            return
+
+        X = np.load(data_path)
+        # Add batch dimension if needed
+        if X.ndim == 2:
+            X = X[np.newaxis, :, :]
+        if args.limit and args.limit < len(X):
+            X = X[: args.limit]
+        output_prefix = f"shap_{args.limit}"
+    elif args.sample == "synthetic":
         print("Loading synthetic data...")
         data_path = Path("data/processed/synthetic_ddos.npy")
         if not data_path.exists():
@@ -85,19 +110,47 @@ def main():
     # Create SHAP explainer
     print("Creating SHAP explainer...")
 
+    # Ensure we have enough data for SHAP to work properly
+    if len(X_flat) < 200:  # If we don't have enough samples, expand the data
+        print(
+            f"Warning: Only {len(X_flat)} samples available, replicating to ensure SHAP works"
+        )
+        # Replicate the data to have at least 200 samples
+        repeat_factor = max(1, 200 // len(X_flat))
+        X_flat = np.repeat(X_flat, repeat_factor, axis=0)[:200]
+        print(f"Expanded data shape: {X_flat.shape}")
+
     # Use a subset of data as background for KernelExplainer
-    background_size = min(100, len(X_flat))
+    background_size = min(
+        100, len(X_flat) - args.limit
+    )  # Ensure we leave samples for explanation
+    background_size = max(background_size, 50)  # Minimum background samples
     background_indices = np.random.choice(len(X_flat), background_size, replace=False)
     background_data = X_flat[background_indices]
 
     explainer = shap.KernelExplainer(model.predict, background_data)
 
-    # Generate explanations
+    # Generate explanations - use different samples from background
     explain_size = min(args.limit, len(X_flat))
-    X_explain = X_flat[:explain_size]
+    # Use samples not in background for explanation
+    available_indices = np.setdiff1d(np.arange(len(X_flat)), background_indices)
+    if len(available_indices) >= explain_size:
+        explain_indices = available_indices[:explain_size]
+    else:
+        # If not enough separate samples, use some overlap
+        explain_indices = np.arange(explain_size)
+    X_explain = X_flat[explain_indices]
 
     print(f"Generating SHAP values for {explain_size} samples...")
-    shap_values = explainer.shap_values(X_explain, nsamples=args.nsamples)
+
+    if args.smoke_test:
+        # Create mock SHAP values for testing
+        print("Running in smoke test mode - generating mock SHAP values")
+        shap_values = np.random.randn(explain_size, X_explain.shape[1]) * 0.01
+        expected_value = 0.5
+    else:
+        shap_values = explainer.shap_values(X_explain, nsamples=args.nsamples)
+        expected_value = explainer.expected_value
 
     # Get predictions for context
     predictions = model.predict(X_explain)
@@ -107,7 +160,7 @@ def main():
         "shap_values": (
             shap_values.tolist() if isinstance(shap_values, np.ndarray) else shap_values
         ),
-        "base_value": float(explainer.expected_value),
+        "base_value": float(expected_value),
         "sample_data": X_explain.tolist(),
         "predictions": predictions.tolist(),
         "feature_dimensions": {
@@ -135,13 +188,18 @@ def main():
 
     try:
         # Create force plot for the first sample
-        force_plot = shap.force_plot(
-            explainer.expected_value,
-            shap_values[0],
-            X_explain[0],
-            show=False,
-            matplotlib=False,
-        )
+        if args.smoke_test:
+            # Skip complex force plot in smoke test mode
+            force_plot_html = "<div>Mock SHAP plot for smoke test</div>"
+        else:
+            force_plot = shap.force_plot(
+                explainer.expected_value,
+                shap_values[0],
+                X_explain[0],
+                show=False,
+                matplotlib=False,
+            )
+            force_plot_html = force_plot.html()
 
         # Generate HTML with embedded JavaScript
         shap_html = f"""
@@ -161,10 +219,11 @@ def main():
             <div class="metadata">
                 <h3>Model Information</h3>
                 <ul>
-                    <li>Base Value (Expected): {explainer.expected_value:.4f}</li>
+                    <li>Base Value (Expected): {expected_value:.4f}</li>
                     <li>Prediction for Sample 0: {predictions[0]:.4f}</li>
-                    <li>Background Samples: {background_size}</li>
+                    <li>Background Samples: {background_size if not args.smoke_test else 'Mock'}</li>
                     <li>Explained Samples: {explain_size}</li>
+                    <li>Test Mode: {'Smoke Test' if args.smoke_test else 'Full SHAP'}</li>
                 </ul>
             </div>
             
@@ -181,8 +240,8 @@ def main():
             </div>
             
             <h3>Force Plot (Sample 0)</h3>
-            {shap.getjs()}
-            {force_plot.html()}
+            {shap.getjs() if not args.smoke_test else ''}
+            {force_plot_html}
             
             <div class="metadata">
                 <h3>Interpretation</h3>
@@ -224,8 +283,9 @@ def main():
 
     # Print summary
     print("\n✓ SHAP analysis complete!")
+    print(f"  Mode: {'Smoke Test' if args.smoke_test else 'Full SHAP'}")
     print(f"  Analyzed {explain_size} samples")
-    print(f"  Base value (expected): {explainer.expected_value:.4f}")
+    print(f"  Base value (expected): {expected_value:.4f}")
     print(f"  First sample prediction: {predictions[0]:.4f}")
     print(f"  JSON data: {json_path}")
     print(f"  HTML visualization: {html_path}")
