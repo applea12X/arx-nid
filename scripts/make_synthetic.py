@@ -168,7 +168,7 @@ def main():
         help="Output directory for synthetic flows",
     )
     parser.add_argument(
-        "--num-packets", type=int, default=20, help="Number of packets per flow"
+        "--num-packets", type=int, default=5, help="Number of packets per flow (default: 5 to match tensor_v0.npy)"
     )
     parser.add_argument(
         "--num-features", type=int, default=34, help="Number of features per packet"

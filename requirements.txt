@@ -36,10 +36,19 @@ pre-commit>=3.0.0
 black>=23.0.0
 ruff>=0.1.0
 
-# Optional: Advanced ML libraries (uncomment as needed)
-# tensorflow>=2.8.0
+# Deep Learning and ML frameworks
 torch>=1.11.0
-# xgboost>=1.5.0
+torchvision>=0.12.0
+
+# Experiment tracking and hyperparameter optimization
+mlflow>=2.0.0
+optuna>=3.0.0
+
+# Model serialization
+joblib>=1.1.0
+
+# Adversarial robustness
+adversarial-robustness-toolbox>=1.15.0
 
 # Explainability libraries
 shap==0.45.*

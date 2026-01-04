@@ -1,0 +1,22 @@
+artifact_path: /Users/abhipasam/Documents/arx-nid/mlruns/1/models/m-30a97379938849e5b6c780dd4c4a3912/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.5
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.5.2
+mlflow_version: 3.8.1
+model_id: m-30a97379938849e5b6c780dd4c4a3912
+model_size_bytes: 208340
+model_uuid: m-30a97379938849e5b6c780dd4c4a3912
+prompts: null
+run_id: f2f6768cd20446b6a324f4d4fda0c65a
+utc_time_created: '2026-01-04 02:14:36.296605'

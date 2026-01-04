@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Download CTAP 2018-24 and verify checksum.

@@ -95,15 +95,26 @@ class ONNXModel:
             Predictions of shape (batch,)
         """
         # Handle both 2D (flattened for SHAP) and 3D inputs
-        if x.ndim == 2 and x.shape[1] == 170:  # 5 * 34 = 170
-            # Reshape flattened input back to 3D
+        if x.ndim == 2:
+            # Determine time steps and features from flattened input
             batch_size = x.shape[0]
-            x = x.reshape(batch_size, 5, 34)
+            total_features = x.shape[1]
+            
+            # Common configurations: 5*34=170, 20*34=680
+            if total_features == 170:  # 5 time steps, 34 features
+                x = x.reshape(batch_size, 5, 34)
+            elif total_features == 680:  # 20 time steps, 34 features  
+                x = x.reshape(batch_size, 20, 34)
+            elif total_features % 34 == 0:  # Any multiple of 34 features
+                time_steps = total_features // 34
+                x = x.reshape(batch_size, time_steps, 34)
+            else:
+                raise ValueError(f"Cannot reshape input with {total_features} features (not a multiple of 34)")
         elif x.ndim == 3:
             # Already in correct shape
             pass
         else:
-            raise ValueError(f"Unexpected input shape: {x.shape}")
+            raise ValueError(f"Unexpected input dimensions: {x.ndim}D")
 
         # Run inference
         result = self.sess.run(
